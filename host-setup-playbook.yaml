@@ -1,0 +1,75 @@
+- name: Setup tendenci host
+  hosts: tendenci-hosts
+  tasks:
+    - name: Install pip
+      become: yes
+      package:
+        name: python-pip
+        state: latest
+    - name: Install apt-transport-https
+      become: yes
+      package:
+        name: apt-transport-https
+    - name: Install software-properties-common
+      become: yes
+      package:
+        name: software-properties-common
+    - name: Add docker repository key
+      become: yes
+      apt_key:
+        id: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+        url: https://download.docker.com/linux/debian/gpg
+    - name: Add docker repository
+      become: yes
+      apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/debian stretch stable
+        state: present
+        update_cache: yes
+    - name: Install docker
+      become: yes
+      package:
+        name: docker-ce
+        state: latest
+    - name: Install virtualenv
+      become: yes
+      package:
+        name: virtualenv
+    - name: Make dockerenv directory
+      become: yes
+      file:
+        path: /var/dockerenv
+        state: directory
+        owner: root
+        group: docker
+        mode: 0770
+    - name: Install docker python module in virtualenv
+      pip:
+        name: docker
+        state: present
+        virtualenv: /var/dockerenv
+    - name: Install docker-compose in the virtualenv
+      pip:
+        name: docker-compose
+        state: present
+        virtualenv: /var/dockerenv
+    - name: Copy docker container source to host
+      become: yes
+      copy:
+        src: ./container
+        dest: /var/containers/tendenci/
+        owner: root
+        group: docker
+        mode: u=rw,g=rw
+    - name: Build and run containers
+      docker_service:
+        project_src: /var/containers/tendenci/container
+        build: yes
+        state: present
+      vars:
+        venv_path: /var/dockerenv
+        ansible_python_interpreter: /var/dockerenv/bin/python
+      environment:
+        PATH: '{{ venv_path }}/bin:{{ ansible_env.PATH }}'
+
+        
+    

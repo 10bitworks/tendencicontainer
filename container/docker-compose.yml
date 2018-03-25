@@ -1,0 +1,52 @@
+version: '2'
+services:
+  database:
+    build: ./postgres
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: 'super-secret-password'
+    volumes:
+      - tendenci_db:/var/lib/postgresql/data
+    networks:
+      db_net:
+    #mem_limit: 128M
+  tendenci:
+    build: ./tendenci
+    restart: always
+    depends_on:
+      - database
+      - memcache
+    volumes:
+      - tendenci_web:/var/www/tendenciBitWorks
+    networks:
+      db_net:
+      proxy:
+      memcache:
+    ports:
+      - 8000
+  nginx:
+    build: ./nginx
+    restart: always
+    depends_on:
+      - tendenci
+    volumes:
+      - tendenci_web:/var/www/tendenciBitWorks:ro
+    networks:
+      proxy:
+    ports:
+      - 443:443
+      - 80:80
+      - 8080:8080
+  memcache:
+    image: memcached
+    networks:
+      memcache:
+
+networks:
+  db_net:
+  proxy:
+  memcache:
+    
+volumes:
+  tendenci_db:
+  tendenci_web:
